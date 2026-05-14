@@ -36,16 +36,19 @@ interface ResponseValueShape {
 
 // Render one card's response as a ClickUp-ready markdown block per spec
 // §14.3. Caller separates blocks with `---` rules.
+// When client.show_clickup_status is false, the **Status:** line is omitted
+// (useful for internal-facing engagements that don't flow into ClickUp).
 export function renderCardMarkdown(args: ExportArgs): string {
   const { card, client, response, status, uploads } = args;
 
   const responseBody = renderResponseBody(card, response, uploads);
+  const showStatus = client.show_clickup_status !== false;
 
-  return [
-    `# ${card.title}`,
-    "",
-    `**Status:** ${status}`,
-    "",
+  const block: string[] = [`# ${card.title}`, ""];
+  if (showStatus) {
+    block.push(`**Status:** ${status}`, "");
+  }
+  block.push(
     `## Response from ${client.name}`,
     responseBody,
     "",
@@ -56,8 +59,9 @@ export function renderCardMarkdown(args: ExportArgs): string {
     card.question,
     "",
     "---",
-    "",
-  ].join("\n");
+    ""
+  );
+  return block.join("\n");
 }
 
 function renderResponseBody(

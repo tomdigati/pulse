@@ -50,6 +50,7 @@ export interface Client {
   engagement_name: string | null;
   token: string;
   brief: string | null;
+  show_clickup_status: boolean;
   created_at: string;
   last_active_at: string | null;
 }

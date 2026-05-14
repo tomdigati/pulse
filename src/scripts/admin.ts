@@ -215,7 +215,7 @@ async function loadEngagements(
 ): Promise<EngagementSummary[]> {
   const { data: clients, error } = await supabase
     .from("clients")
-    .select("id, name, org_name, engagement_name, token, brief, created_at, last_active_at")
+    .select("id, name, org_name, engagement_name, token, brief, show_clickup_status, created_at, last_active_at")
     .order("created_at", { ascending: false });
   if (error || !clients) {
     console.error("load clients:", error);
@@ -498,7 +498,7 @@ async function loadDetail(
 ): Promise<DetailData | null> {
   const { data: client, error: clientErr } = await supabase
     .from("clients")
-    .select("id, name, org_name, engagement_name, token, brief, created_at, last_active_at")
+    .select("id, name, org_name, engagement_name, token, brief, show_clickup_status, created_at, last_active_at")
     .eq("id", clientId)
     .single<Client>();
   if (clientErr || !client) return null;
@@ -572,8 +572,17 @@ function renderDetail(
   // Per-card status overrides keyed by card id.
   const statusOverrides = new Map<string, Status>();
 
+  const showClickupStatus = client.show_clickup_status !== false;
   const cardsHtml = cards
-    .map((card) => renderResponseCard(card, responses.get(card.id), uploads.get(card.id) ?? [], statusOverrides))
+    .map((card) =>
+      renderResponseCard(
+        card,
+        responses.get(card.id),
+        uploads.get(card.id) ?? [],
+        statusOverrides,
+        showClickupStatus
+      )
+    )
     .join("");
 
   container.innerHTML = `
@@ -747,7 +756,7 @@ function renderDetail(
       ?.addEventListener("click", () => {
         swapCardHtml(
           articleEl,
-          renderResponseCard(card, responses.get(card.id), uploads.get(card.id) ?? [], statusOverrides)
+          renderResponseCard(card, responses.get(card.id), uploads.get(card.id) ?? [], statusOverrides, showClickupStatus)
         );
       });
 
@@ -778,7 +787,7 @@ function renderDetail(
           if (idx >= 0) cards[idx] = updated;
           swapCardHtml(
             articleEl,
-            renderResponseCard(updated, responses.get(card.id), uploads.get(card.id) ?? [], statusOverrides)
+            renderResponseCard(updated, responses.get(card.id), uploads.get(card.id) ?? [], statusOverrides, showClickupStatus)
           );
           toast("Card saved");
         } finally {
@@ -905,7 +914,8 @@ function renderDetail(
             created,
             undefined,
             [],
-            statusOverrides
+            statusOverrides,
+            showClickupStatus
           ).trim();
           const next = tmp.firstElementChild as HTMLElement | null;
           if (next) {
@@ -1178,7 +1188,8 @@ function renderResponseCard(
   card: Card,
   response: ClientResponse | undefined,
   uploads: UploadRow[],
-  statusOverrides: Map<string, Status>
+  statusOverrides: Map<string, Status>,
+  showClickupStatus: boolean
 ): string {
   const suggested = suggestStatus(card, response);
   statusOverrides.set(card.id, suggested);
@@ -1190,6 +1201,15 @@ function renderResponseCard(
     (s) =>
       `<option value="${escape(s)}"${s === suggested ? " selected" : ""}>${escape(s)}</option>`
   ).join("");
+
+  // Internal engagements (show_clickup_status=false on the client row)
+  // hide the suggested-status dropdown — they never flow into ClickUp.
+  const statusBlock = showClickupStatus
+    ? `<div class="response-meta-left">
+         <span>Suggested status:</span>
+         <select class="status-select">${optionsHtml}</select>
+       </div>`
+    : `<div class="response-meta-left"></div>`;
 
   return `
     <article class="response-card" data-card-id="${escape(card.id)}">
@@ -1206,10 +1226,7 @@ function renderResponseCard(
       </div>
       <div class="response-body${responseBodyMutedClass(response)}">${renderResponseBodyHtml(card, response, uploads)}</div>
       <div class="response-meta">
-        <div class="response-meta-left">
-          <span>Suggested status:</span>
-          <select class="status-select">${optionsHtml}</select>
-        </div>
+        ${statusBlock}
         <div class="response-meta-right">
           ${response?.answered_at ? `<span>Answered ${escape(formatTimestamp(response.answered_at))}</span>` : response?.viewed_at ? `<span>Viewed ${escape(formatTimestamp(response.viewed_at))}</span>` : ""}
           <button class="btn-primary-sm" type="button" data-action="copy-card" style="margin-left:12px">Copy</button>
