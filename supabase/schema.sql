@@ -20,16 +20,23 @@ create table if not exists public.clients (
   -- Markdown brief: profile, deck sketch, ops log, handoff notes.
   -- Edited from /admin/, optionally copied as markdown to share.
   brief            text,
+  -- When false, the admin hides the per-card "Suggested status" dropdown
+  -- and the markdown export omits the **Status:** line. Useful for
+  -- internal-facing engagements that don't flow into ClickUp.
+  show_clickup_status boolean not null default true,
   created_at       timestamptz not null default now(),
   last_active_at   timestamptz
 );
 
--- Backfill for projects predating the brief column.
+-- Backfill for projects predating these columns.
 alter table public.clients
   add column if not exists brief text;
+alter table public.clients
+  add column if not exists show_clickup_status boolean not null default true;
 
--- brief is admin-only. Service role bypasses RLS, so no anon grant
--- needed; anon's column-scoped UPDATE remains limited to last_active_at.
+-- brief and show_clickup_status are admin-only. Service role bypasses
+-- RLS, so no anon grant needed; anon's column-scoped UPDATE remains
+-- limited to last_active_at.
 
 create table if not exists public.cards (
   id             uuid primary key default gen_random_uuid(),
