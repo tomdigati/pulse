@@ -31,7 +31,25 @@ export function renderError(
   `;
 }
 
-export function renderComplete(mount: HTMLElement, name: string): void {
+export function renderComplete(
+  mount: HTMLElement,
+  name: string,
+  cards: Card[],
+  responses: Map<string, ClientResponse>,
+  onJumpTo: (index: number) => void
+): void {
+  const skippedIndices = cards
+    .map((c, i): [number, ClientResponse | undefined] => [i, responses.get(c.id)])
+    .filter(([, r]) => r?.state === "skipped")
+    .map(([i]) => i);
+
+  const reviewSkippedBtn =
+    skippedIndices.length > 0
+      ? `<button class="btn btn-primary" type="button" data-action="review-skipped">
+           Review skipped question${skippedIndices.length === 1 ? "" : "s"} (${skippedIndices.length})
+         </button>`
+      : "";
+
   mount.innerHTML = `
     <div class="card complete" role="status">
       <div class="category">Thank you</div>
@@ -40,8 +58,24 @@ export function renderComplete(mount: HTMLElement, name: string): void {
       <p class="context">
         Your responses are with Tom. He will follow up directly.
       </p>
+      <div class="actions">
+        ${reviewSkippedBtn}
+        <button class="btn btn-secondary" type="button" data-action="review-start">
+          Go back and review answers
+        </button>
+      </div>
     </div>
   `;
+
+  mount
+    .querySelector<HTMLButtonElement>("button[data-action='review-skipped']")
+    ?.addEventListener("click", () => {
+      if (skippedIndices.length > 0) onJumpTo(skippedIndices[0]);
+    });
+
+  mount
+    .querySelector<HTMLButtonElement>("button[data-action='review-start']")
+    ?.addEventListener("click", () => onJumpTo(0));
 }
 
 function firstName(full: string): string {
