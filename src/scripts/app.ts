@@ -227,7 +227,7 @@ function runApp(ctx: RunCtx): void {
 
   const draw = (): void => {
     if (index >= cards.length) {
-      renderComplete(mount, client.name);
+      renderComplete(mount, client.name, cards, responses, navigateTo);
       return;
     }
     const card = cards[index];
