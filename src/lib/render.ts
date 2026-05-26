@@ -315,6 +315,12 @@ function renderNoteField(
   ) {
     return "";
   }
+  // Single-select with exactly one option is an acknowledgement / welcome
+  // card. The lone CTA is the whole interaction; a notes field would just
+  // sit there empty.
+  if (card.response_type === "single-select" && (card.options ?? []).length === 1) {
+    return "";
+  }
   const v = (prior?.response_value ?? {}) as { note?: string };
   const prefill = v.note ?? "";
   const dis = saving ? "disabled" : "";
@@ -399,6 +405,22 @@ function renderSingleSelect(
 ): string {
   const opts = card.options ?? [];
   const dis = saving ? "disabled" : "";
+  // Acknowledgement / welcome card: one option = render as the standard
+  // centered green CTA, not a radio-style option chip.
+  if (opts.length === 1) {
+    const o = opts[0];
+    return `
+      <div class="options options-single-cta">
+        <button
+          class="btn btn-primary"
+          type="button"
+          data-action="toggle-single"
+          data-option="${escapeAttr(o)}"
+          ${dis}
+        >${escape(o)}</button>
+      </div>
+    `;
+  }
   return `
     <div class="options" role="radiogroup">
       ${opts
